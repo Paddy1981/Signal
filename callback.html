@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kite Login — Signal Lab</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #0f1419;
+      color: #e6e9ef;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #1a2028;
+      border: 1px solid #2a3340;
+      border-radius: 12px;
+      padding: 36px;
+      max-width: 560px;
+      width: 100%;
+      text-align: center;
+    }
+    .logo { font-size: 28px; font-weight: 700; color: #4fc3f7; margin-bottom: 6px; }
+    .sub  { font-size: 13px; color: #8a96a8; margin-bottom: 32px; }
+
+    .status-ok  { color: #4caf50; font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+    .status-err { color: #ef5350; font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+
+    .token-box {
+      background: #0f1419;
+      border: 1px solid #2a3340;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .token-label { font-size: 11px; color: #8a96a8; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .token-value {
+      font-family: "Consolas", monospace;
+      font-size: 13px;
+      color: #4fc3f7;
+      word-break: break-all;
+      background: #161c24;
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid #2a3340;
+      transition: border-color .15s;
+    }
+    .token-value:hover { border-color: #4fc3f7; }
+
+    .copy-btn {
+      background: #4fc3f7;
+      color: #0f1419;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 16px;
+      transition: background .15s;
+    }
+    .copy-btn:hover { background: #81d4fa; }
+    .copy-btn.copied { background: #4caf50; color: white; }
+
+    .instructions {
+      background: #0f1419;
+      border: 1px solid #2a3340;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: left;
+      font-size: 13px;
+      color: #8a96a8;
+      line-height: 1.7;
+    }
+    .instructions b { color: #e6e9ef; }
+    .step { margin-bottom: 6px; }
+    .step span { color: #4fc3f7; font-weight: 700; margin-right: 6px; }
+
+    .url-copy {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #2a3340;
+    }
+    .url-label { font-size: 11px; color: #8a96a8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+    .url-value {
+      font-family: "Consolas", monospace;
+      font-size: 11px;
+      color: #8a96a8;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Signal Lab</div>
+  <div class="sub">Zerodha Kite — OAuth Callback</div>
+
+  <div id="content">Loading...</div>
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get("request_token") || "";
+  const status = params.get("status") || "";
+  const el     = document.getElementById("content");
+
+  if (status === "success" && token) {
+    el.innerHTML = `
+      <div class="status-ok">&#10003; Login Successful</div>
+      <div class="token-box">
+        <div class="token-label">Your Request Token (click to select)</div>
+        <div class="token-value" id="token" onclick="selectToken()">${token}</div>
+      </div>
+      <button class="copy-btn" id="copyBtn" onclick="copyToken()">Copy Token</button>
+      <div class="instructions">
+        <div class="step"><span>1.</span>Click <b>Copy Token</b> above</div>
+        <div class="step"><span>2.</span>Go back to your terminal running <b>python portfolio/kite_client.py --login</b></div>
+        <div class="step"><span>3.</span>Paste the token when prompted</div>
+        <div class="step"><span>4.</span>Access token is saved automatically — you are connected!</div>
+        <div class="url-copy">
+          <div class="url-label">Or paste this full URL into the terminal prompt</div>
+          <div class="url-value" id="fullUrl"></div>
+        </div>
+      </div>`;
+    document.getElementById("fullUrl").textContent = window.location.href;
+
+  } else if (status === "error" || params.get("error")) {
+    const msg = params.get("message") || params.get("error") || "Unknown error";
+    el.innerHTML = `
+      <div class="status-err">&#10007; Login Failed</div>
+      <p style="color:#8a96a8;margin-bottom:16px">${msg}</p>
+      <div class="instructions">
+        <div class="step"><span>1.</span>Go back and try the login URL again</div>
+        <div class="step"><span>2.</span>Make sure your Zerodha credentials are correct</div>
+      </div>`;
+
+  } else {
+    el.innerHTML = `
+      <div class="status-err">No token found in URL</div>
+      <p style="color:#8a96a8;margin-bottom:16px">
+        This page is the Kite OAuth callback for Signal Lab.<br>
+        It should only be opened automatically after Kite login.
+      </p>
+      <div class="instructions">
+        <div class="step"><span>1.</span>Run <b>python portfolio/kite_client.py --login</b></div>
+        <div class="step"><span>2.</span>Open the login URL in your browser</div>
+        <div class="step"><span>3.</span>Complete Zerodha login — this page opens automatically</div>
+      </div>`;
+  }
+
+  function selectToken() {
+    const el = document.getElementById("token");
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+  }
+
+  function copyToken() {
+    const token = document.getElementById("token").textContent;
+    navigator.clipboard.writeText(token).then(() => {
+      const btn = document.getElementById("copyBtn");
+      btn.textContent = "Copied!";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.textContent = "Copy Token";
+        btn.classList.remove("copied");
+      }, 2000);
+    }).catch(() => {
+      selectToken();
+      document.execCommand("copy");
+    });
+  }
+</script>
+</body>
+</html>
