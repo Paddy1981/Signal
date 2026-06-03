@@ -107,18 +107,34 @@
 
 <script>
   const params = new URLSearchParams(window.location.search);
-  const token  = params.get("request_token") || "";
   const status = params.get("status") || "";
   const el     = document.getElementById("content");
 
+  // Strict validation: Kite request_token is alphanumeric, max 64 chars
+  const rawToken = params.get("request_token") || "";
+  const token = /^[A-Za-z0-9]{1,64}$/.test(rawToken) ? rawToken : "";
+
+  function setText(id, value) {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value;
+  }
+
+  function makeEl(tag, attrs, text) {
+    const el = document.createElement(tag);
+    Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
   if (status === "success" && token) {
+    // Build DOM safely — no innerHTML with user data
     el.innerHTML = `
       <div class="status-ok">&#10003; Login Successful</div>
       <div class="token-box">
         <div class="token-label">Your Request Token (click to select)</div>
-        <div class="token-value" id="token" onclick="selectToken()">${token}</div>
+        <div class="token-value" id="token"></div>
       </div>
-      <button class="copy-btn" id="copyBtn" onclick="copyToken()">Copy Token</button>
+      <button class="copy-btn" id="copyBtn">Copy Token</button>
       <div class="instructions">
         <div class="step"><span>1.</span>Click <b>Copy Token</b> above</div>
         <div class="step"><span>2.</span>Go back to your terminal running <b>python portfolio/kite_client.py --login</b></div>
@@ -129,17 +145,24 @@
           <div class="url-value" id="fullUrl"></div>
         </div>
       </div>`;
-    document.getElementById("fullUrl").textContent = window.location.href;
+    // Set user-controlled values via textContent only
+    setText("token", token);
+    setText("fullUrl", window.location.href);
+    document.getElementById("token").addEventListener("click", selectToken);
+    document.getElementById("copyBtn").addEventListener("click", copyToken);
 
   } else if (status === "error" || params.get("error")) {
-    const msg = params.get("message") || params.get("error") || "Unknown error";
+    // Safe: build error message via textContent, never innerHTML
     el.innerHTML = `
       <div class="status-err">&#10007; Login Failed</div>
-      <p style="color:#8a96a8;margin-bottom:16px">${msg}</p>
+      <p id="errMsg" style="color:#8a96a8;margin-bottom:16px"></p>
       <div class="instructions">
         <div class="step"><span>1.</span>Go back and try the login URL again</div>
         <div class="step"><span>2.</span>Make sure your Zerodha credentials are correct</div>
       </div>`;
+    // Assign error text safely — never interpolate into HTML
+    const rawMsg = params.get("message") || params.get("error") || "Unknown error";
+    setText("errMsg", rawMsg.substring(0, 200));
 
   } else {
     el.innerHTML = `
